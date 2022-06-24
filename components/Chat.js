@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import { GiftedChat, Bubble, MessageText, Time, InputToolbar } from 'react-native-gifted-chat';
+import CustomActions from './CustomActions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as firebase from 'firebase';
 import "firebase/firestore";
 import NetInfo from '@react-native-community/netinfo';
+import MapView from 'react-native-maps';
 
 export default class Chat extends React.Component {
 
@@ -18,7 +20,9 @@ export default class Chat extends React.Component {
         username: '',
         avatar: '',
       },
-      isConnected: false
+      isConnected: false,
+      image: null,
+      location: null,
     };
 
     //configuration for firebase
@@ -54,7 +58,12 @@ export default class Chat extends React.Component {
         _id: data._id,
         text: data.text,
         createdAt: data.createdAt.toDate(),
-        user: data.user,
+        user: {
+          _id: data.user._id,
+          name: data.user.name,
+        },
+        image: data.image || null,
+        location: data.location || null,
       });
     });
     this.setState({
@@ -171,6 +180,8 @@ export default class Chat extends React.Component {
       text: message.text || '',
       createdAt: message.createdAt,
       user: this.state.user,
+      image: message.image || null,
+      location: message.location || null,
     });
   };
 
@@ -226,6 +237,36 @@ export default class Chat extends React.Component {
     }
   }
 
+  renderCustomActions = (props) => {
+    return <CustomActions {...props} />;
+
+  }
+
+  //render a map with current location, if the user shared their location on a message
+
+  renderCustomView(props) {
+    const { currentMessage } = props;
+    if (currentMessage.location) {
+      return (
+        <MapView
+          style={{
+            width: 150,
+            height: 100,
+            borderRadius: 13,
+            margin: 3
+          }}
+          region={{
+            latitude: currentMessage.location.latitude,
+            longitude: currentMessage.location.longitude,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
+        />
+      );
+    }
+    return null;
+  }
+
   //What happens when user sends a message
 
   onSend(messages = []) {
@@ -248,6 +289,8 @@ export default class Chat extends React.Component {
         <GiftedChat
           renderBubble={this.renderBubble.bind(this)}
           renderInputToolbar={this.renderInputToolbar.bind(this)}
+          renderActions={this.renderCustomActions}
+          renderCustomView={this.renderCustomView}
           messages={this.state.messages}
           onSend={messages => this.onSend(messages)}
           user={{
